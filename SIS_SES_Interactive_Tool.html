@@ -172,7 +172,7 @@
     border: 1.5px solid var(--border); border-radius: 8px;
     font-size: 12px; text-align: center; color: var(--muted);
     line-height: 1.3; transition: all 0.15s;
-    min-height: 54px;
+    height: 64px;
     user-select: none;
   }
 
@@ -315,16 +315,19 @@
 
   .bar-avg {
     position: absolute; top: 0; bottom: 0;
-    width: 2px; background: rgba(0,0,0,0.2);
+    width: 4px; background: rgba(0,0,0,0.35);
     z-index: 2;
+    transform: translateX(-50%);
   }
 
-  .bar-avg-label {
-    position: absolute; top: -18px;
+  .bar-sd-low, .bar-sd-high {
+    position: absolute; top: 15%; bottom: 15%;
+    width: 2px; background: rgba(0,0,0,0.2);
+    z-index: 2;
     transform: translateX(-50%);
-    font-size: 10px; color: var(--muted);
-    white-space: nowrap;
   }
+
+  .bar-avg-label { display: none; }
 
   .bar-fill {
     height: 100%; border-radius: 6px;
@@ -336,22 +339,11 @@
   .bar-fill.sis1 { background: linear-gradient(90deg, #7b4a2a, #a86040); }
   .bar-fill.sis2 { background: linear-gradient(90deg, #2a4a7b, #3a60a8); }
 
-  .bar-marker {
-    position: absolute; right: -1px; top: 50%;
-    transform: translateY(-50%);
-    width: 14px; height: 14px;
-    background: white; border-radius: 50%;
-    border: 3px solid currentColor;
-    z-index: 3;
-  }
-  .bar-fill.ses .bar-marker { color: var(--ses-color); border-color: var(--ses-color); }
-  .bar-fill.sis1 .bar-marker { color: var(--sis1-color); border-color: var(--sis1-color); }
-  .bar-fill.sis2 .bar-marker { color: var(--sis2-color); border-color: var(--sis2-color); }
-
   .legend { display: flex; gap: 20px; margin-top: 14px; flex-wrap: wrap; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .legend-line { width: 18px; height: 2px; background: rgba(0,0,0,0.2); }
+  .legend-line { width: 18px; height: 4px; background: rgba(0,0,0,0.35); }
+  .legend-line-sd { width: 14px; height: 2px; background: rgba(0,0,0,0.2); }
 
   /* Interpretation */
   .interpretation-section {
@@ -608,10 +600,11 @@
     <p class="chart-note" id="chartNote">Your scores (●) compared to published population averages (|) — Carpenter et al. (2008)</p>
     <div class="bar-chart" id="barChart"></div>
     <div class="legend">
-      <div class="legend-item"><div class="legend-line"></div> Population average</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#2a7b7c;border:2px solid white;outline:2px solid #2a7b7c"></div> Your SES score</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#7b4a2a;border:2px solid white;outline:2px solid #7b4a2a"></div> Your SIS1 score</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#2a4a7b;border:2px solid white;outline:2px solid #2a4a7b"></div> Your SIS2 score</div>
+      <div class="legend-item"><div class="legend-line"></div> Population mean</div>
+      <div class="legend-item"><div class="legend-line-sd"></div> ±1 SD</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2a7b7c;"></div> SES score</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7b4a2a;"></div> SIS1 score</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2a4a7b;"></div> SIS2 score</div>
     </div>
   </div>
 
@@ -786,7 +779,7 @@ function calculateAndShowResults() {
     const z = (score - n.mean) / n.sd;
     if (z < -1.5) return 'Well Below Average';
     if (z < -0.75) return 'Below Average';
-    if (z <= 0.75) return 'Average Range';
+    if (z <= 0.75) return 'Average';
     if (z <= 1.5) return 'Above Average';
     return 'Well Above Average';
   }
@@ -820,23 +813,27 @@ function buildBarChart(ses, sis1, sis2, norm) {
     const totalRange = max - min;
     const scorePct = ((s.score - min) / totalRange * 100).toFixed(1);
     const avgPct   = ((s.n.mean  - min) / totalRange * 100).toFixed(1);
+    const sdLowPct = (((s.n.mean - s.n.sd) - min) / totalRange * 100).toFixed(1);
+    const sdHighPct= (((s.n.mean + s.n.sd) - min) / totalRange * 100).toFixed(1);
+    const scoreLabel = getLabel(s.score, s.n);
 
     const row = document.createElement('div');
     row.className = 'bar-row';
     row.innerHTML = `
       <div class="bar-meta">
         <span class="bar-label">${s.label}</span>
-        <span class="bar-score-label">Score: <strong>${s.score}</strong> &nbsp;|&nbsp; Avg: ${s.n.mean.toFixed(0)} (±${s.n.sd.toFixed(0)})</span>
+        <span class="bar-score-label">Your Score: <strong>${s.score}</strong> (${scoreLabel})</span>
       </div>
       <div class="bar-track" style="position:relative;">
-        <div class="bar-avg" style="left:${avgPct}%">
-          <span class="bar-avg-label">avg ${s.n.mean.toFixed(0)}</span>
-        </div>
-        <div class="bar-fill ${s.cls}" style="width:${scorePct}%">
-          <div class="bar-marker"></div>
-        </div>
+        <div class="bar-sd-low"  style="left:${sdLowPct}%"></div>
+        <div class="bar-sd-high" style="left:${sdHighPct}%"></div>
+        <div class="bar-avg" style="left:${avgPct}%"></div>
+        <div class="bar-fill ${s.cls}" style="width:${scorePct}%"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px;">
+      <div style="display:flex;justify-content:center;font-size:10px;color:var(--muted);margin-top:6px;">
+        Mean: ${s.n.mean.toFixed(0)} &nbsp;|&nbsp; SD: ±${s.n.sd.toFixed(0)}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px;">
         <span>${min} (min)</span><span>${max} (max)</span>
       </div>
     `;
@@ -845,7 +842,7 @@ function buildBarChart(ses, sis1, sis2, norm) {
 
   const gLabel = selectedGender === 'male' ? 'male' : selectedGender === 'female' ? 'female' : 'combined';
   document.getElementById('chartNote').textContent =
-    `Your scores (●) compared to published ${gLabel} population averages (|) — Janssen et al. (2002) & Carpenter et al. (2008)`;
+    `Colored bar = your score. Thick line = population mean. Short lines = ±1 SD. ${gLabel.charAt(0).toUpperCase()+gLabel.slice(1)} norms — Janssen et al. (2002) & Carpenter et al. (2008)`;
 }
 
 function buildInterpretation(ses, sis1, sis2, norm) {
