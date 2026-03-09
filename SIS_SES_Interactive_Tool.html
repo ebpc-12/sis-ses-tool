@@ -756,6 +756,15 @@ function submitQuestionnaire() {
 
 function recode(val) { return 5 - val; }
 
+function getLabel(score, n) {
+  const z = (score - n.mean) / n.sd;
+  if (z < -1.5) return 'Well Below Average';
+  if (z < -0.75) return 'Below Average';
+  if (z <= 0.75) return 'Average';
+  if (z <= 1.5) return 'Above Average';
+  return 'Well Above Average';
+}
+
 function calculateAndShowResults() {
   // Score: recode all except items 17 and 45, then sum
   let sesTot = 0, sis1Tot = 0, sis2Tot = 0;
@@ -775,15 +784,6 @@ function calculateAndShowResults() {
   document.getElementById('sis2Score').textContent = sis2Tot;
 
   // Percentile labels
-  function getLabel(score, n) {
-    const z = (score - n.mean) / n.sd;
-    if (z < -1.5) return 'Well Below Average';
-    if (z < -0.75) return 'Below Average';
-    if (z <= 0.75) return 'Average';
-    if (z <= 1.5) return 'Above Average';
-    return 'Well Above Average';
-  }
-
   document.getElementById('sesLabel').textContent  = getLabel(sesTot,  norm.ses);
   document.getElementById('sis1Label').textContent = getLabel(sis1Tot, norm.sis1);
   document.getElementById('sis2Label').textContent = getLabel(sis2Tot, norm.sis2);
